@@ -1,27 +1,39 @@
-from pulp import *
+import numpy as np
 
-# Создаем задачу максимизации
-problem = LpProblem("Maximize_Objective", LpMaximize)
+# Данные
+supply = [300, 700, 600, 900, 500]  # поставщики
+demand = [600, 800, 700, 900]  # пункты назначения
+cost_matrix = np.array([[5, 8, 3, 6],
+                        [4, 6, 8, 2],
+                        [6, 9, 7, 2],
+                        [1, 3, 4, 7],
+                        [5, 3, 8, 1]])  # Тарифы
 
-# Определяем переменные
-x1 = LpVariable("x1", lowBound=0)
-x2 = LpVariable("x2", lowBound=0)
-x3 = LpVariable("x3", lowBound=0)
-x4 = LpVariable("x4", lowBound=0)
-x5 = LpVariable("x5", lowBound=0)
+def northwest_corner_method(supply, demand):
+    num_suppliers = len(supply)
+    num_customers = len(demand)
+    solution = np.zeros((num_suppliers, num_customers))
 
-# Целевая функция
-problem += x1 - x2 + x3 - x4 + x5, "Objective_Function"
+    i, j = 0, 0
+    while i < num_suppliers and j < num_customers:
+        allocation = min(supply[i], demand[j])
+        solution[i][j] = allocation
+        supply[i] -= allocation
+        demand[j] -= allocation
 
-# Ограничения
-problem += x1 + x2 + 4*x3 + 4*x4 + 3*x5 <= 3, "Constraint_1"
-problem += x1 - x2 - 2*x3 + 2*x4 + 5*x5 <= 1, "Constraint_2"
+        if supply[i] == 0:
+            i += 1
+        if demand[j] == 0:
+            j += 1
 
-# Решение задачи
-problem.solve()
+    return solution
 
-# Вывод результатов
-print(f"Status: {LpStatus[problem.status]}")
-for i in range(1, 6):
-    print(f"x{i} = {value(eval('x'+str(i)))}")
-print(f"Max value = {value(problem.objective)}")
+
+# Получение опорного решения
+initial_solution = northwest_corner_method(supply.copy(), demand.copy())
+
+print("Опорное решение:")
+print(initial_solution)
+
+total_cost = np.sum(initial_solution * cost_matrix)
+print("Общая стоимость транспортировки:", total_cost)
