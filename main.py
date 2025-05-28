@@ -1,39 +1,17 @@
-import numpy as np
+import networkx as nx
 
-# Данные
-supply = [300, 700, 600, 900, 500]  # поставщики
-demand = [600, 800, 700, 900]  # пункты назначения
-cost_matrix = np.array([[5, 8, 3, 6],
-                        [4, 6, 8, 2],
-                        [6, 9, 7, 2],
-                        [1, 3, 4, 7],
-                        [5, 3, 8, 1]])  # Тарифы
+# Чтение графа из файла
+with open('data_mo5_1.txt', 'r') as f:
+    edges = [tuple(map(int, line.split())) for line in f.readlines()]
 
-def northwest_corner_method(supply, demand):
-    num_suppliers = len(supply)
-    num_customers = len(demand)
-    solution = np.zeros((num_suppliers, num_customers))
+# Создание графа
+G = nx.Graph()
+G.add_weighted_edges_from(edges)
 
-    i, j = 0, 0
-    while i < num_suppliers and j < num_customers:
-        allocation = min(supply[i], demand[j])
-        solution[i][j] = allocation
-        supply[i] -= allocation
-        demand[j] -= allocation
+# Построение минимального остовного дерева
+mst = nx.minimum_spanning_tree(G)
 
-        if supply[i] == 0:
-            i += 1
-        if demand[j] == 0:
-            j += 1
-
-    return solution
-
-
-# Получение опорного решения
-initial_solution = northwest_corner_method(supply.copy(), demand.copy())
-
-print("Опорное решение:")
-print(initial_solution)
-
-total_cost = np.sum(initial_solution * cost_matrix)
-print("Общая стоимость транспортировки:", total_cost)
+# Вывод результата
+print("Ребра минимального остовного дерева:")
+for edge in mst.edges(data=True):
+    print(edge)
