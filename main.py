@@ -1,42 +1,52 @@
-from pulp import *
+import pandas as pd
 
+# Данные: партии и вероятности
+parties = [0.8, 1.0, 1.2, 1.4]  # % дефектных
+probabilities = [0.4, 0.3, 0.25, 0.05]  # вероятности
 
-def solver(l):
-    # Создаем задачу максимизации
-    problem = LpProblem("Minimize_Lagrangian", LpMinimize)
+# Потребители и их допустимые уровни брака
+consumers = {
+    "A": 0.8,
+    "B": 1.2,
+    "C": 1.4
+}
 
-    # Определяем переменные с нижней границей 0
-    x1 = LpVariable('x1', lowBound=0)
-    x2 = LpVariable('x2', lowBound=0)
-    x3 = LpVariable('x3', lowBound=0)
-    x4 = LpVariable('x4', lowBound=0)
+# Создаем таблицу "решений"
+data = []
 
-    # Определяем целевую функцию
-    problem += (l - 1) * x1 - (1 + 2 * l) * x2 - x3 - x4, "Objective_Function"
+for party, prob in zip(parties, probabilities):
+    for consumer, max_defect in consumers.items():
+        diff = round(party - max_defect, 3)  # разница
+        if diff > 0:
+            # штраф
+            penalty = diff / 0.1 * -1000
+        elif diff < 0:
+            # бонус
+            penalty = abs(diff) / 0.1 * 500
+        else:
+            penalty = 0
+        expected = penalty * prob
+        data.append({
+            "Партия %": party,
+            "Потребитель": consumer,
+            "Макс. допущено": max_defect,
+            "Разница %": diff,
+            "Штраф/прибыль": penalty,
+            "Вероятность": prob,
+            "Ожидаемый доход": expected
+        })
 
-    # Добавляем ограничения
-    problem += x1 + 3 * x2 + 7 * x3 - x4 == 6, "Constraint_1"
-    problem += x1 - x2 - x3 + 3 * x4 == 2, "Constraint_2"
+df = pd.DataFrame(data)
 
-    # Решаем задачу
-    problem.solve()
+# Вывод дерева решений
+print("\nДерево решений:\n")
+print(df)
 
-    # Вывод результатов
-    print(f"Status: {LpStatus[problem.status]}")
-    print(f"x1 = {value(x1)}")
-    print(f"x2 = {value(x2)}")
-    print(f"x3 = {value(x3)}")
-    print(f"x4 = {value(x4)}")
-    print(f"l  = {l}")
-    print(f"Min L = {value(problem.objective)}")
-    print("\n")
+# Группируем по потребителям — суммарный ожидаемый доход
+summary = df.groupby("Потребитель")["Ожидаемый доход"].sum().sort_values(ascending=False)
 
+print("\nСуммарная ожидаемая прибыль/убыток по потребителям:\n")
+print(summary)
 
-def main():
-    ar = [-10, 0, 10]
-    for _ in ar:
-        solver(_)
-
-
-if __name__ == "__main__":
-    main()
+best = summary.idxmax()
+print(f"\n🔍 Лучший потребитель с наивысшим приоритетом: {best}")
