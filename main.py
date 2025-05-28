@@ -1,33 +1,42 @@
-def min_rental_cost_with_plan(demand):
-    n = len(demand)
-    dp = [float('inf')] * (n + 1)
-    dp[0] = 0
-    rental_plan = [0] * n  # Количество арендованных автомобилей на каждой неделе
+from pulp import *
 
-    for i in range(1, n + 1):
-        # Вариант 1: начать новую аренду на неделе i
-        cost_new = 500 + 220 * demand[i-1]
-        if dp[i-1] + cost_new < dp[i]:
-            dp[i] = dp[i-1] + cost_new
-            rental_plan[i-1] = demand[i-1]  # Арендуем ровно сколько нужно
 
-        # Вариант 2: продлить аренду с предыдущей недели j
-        for j in range(i-1, 0, -1):
-            max_demand = max(demand[j-1:i])
-            cost_extend = 220 * max_demand * (i - j + 1)
-            total_cost = dp[j-1] + 500 + cost_extend
-            if total_cost < dp[i]:
-                dp[i] = total_cost
-                # Обновляем план аренды: на неделях j..i арендуем max_demand
-                for k in range(j-1, i):
-                    rental_plan[k] = max_demand
+def solver(l):
+    # Создаем задачу максимизации
+    problem = LpProblem("Minimize_Lagrangian", LpMinimize)
 
-    return dp[n], rental_plan
+    # Определяем переменные с нижней границей 0
+    x1 = LpVariable('x1', lowBound=0)
+    x2 = LpVariable('x2', lowBound=0)
+    x3 = LpVariable('x3', lowBound=0)
+    x4 = LpVariable('x4', lowBound=0)
 
-demand = [7, 4, 7, 8]
-min_cost, plan = min_rental_cost_with_plan(demand)
-print(f"План по договору: {demand}")
-print(f"Минимальная стоимость аренды: {min_cost}$")
-print("Стратегия аренды по неделям:")
-for week, cars in enumerate(plan, start=1):
-    print(f"Неделя {week}: {cars} автомобилей")
+    # Определяем целевую функцию
+    problem += (l - 1) * x1 - (1 + 2 * l) * x2 - x3 - x4, "Objective_Function"
+
+    # Добавляем ограничения
+    problem += x1 + 3 * x2 + 7 * x3 - x4 == 6, "Constraint_1"
+    problem += x1 - x2 - x3 + 3 * x4 == 2, "Constraint_2"
+
+    # Решаем задачу
+    problem.solve()
+
+    # Вывод результатов
+    print(f"Status: {LpStatus[problem.status]}")
+    print(f"x1 = {value(x1)}")
+    print(f"x2 = {value(x2)}")
+    print(f"x3 = {value(x3)}")
+    print(f"x4 = {value(x4)}")
+    print(f"l  = {l}")
+    print(f"Min L = {value(problem.objective)}")
+    print("\n")
+
+
+def main():
+    ar = [-10, 0, 10]
+    for _ in ar:
+        solver(_)
+
+
+if __name__ == "__main__":
+    main()
